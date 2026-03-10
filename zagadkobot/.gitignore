@@ -46,3 +46,6 @@ app.*.map.json
 
 out.txt
 test.json
+
+# AI models — pobierane lokalnie, nie commitujemy (~50 MB TTS, ~1 GB LLM)
+assets/models/
