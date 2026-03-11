@@ -5,19 +5,19 @@ import 'package:json_annotation/json_annotation.dart';
 enum Topic {
   /// Zwierzęta
   @JsonValue('animals')
-  animals('Zwierzęta', '🐾'),
+  animals('Zwierzęta', '🐾', 'Animals'),
 
   /// Rośliny
   @JsonValue('plants')
-  plants('Rośliny', '🌱'),
+  plants('Rośliny', '🌱', 'Plants'),
 
   /// Kosmos
   @JsonValue('space')
-  space('Kosmos', '🚀'),
+  space('Kosmos', '🚀', 'Space'),
 
   /// Pojazdy
   @JsonValue('vehicles')
-  vehicles('Pojazdy', '🚗');
+  vehicles('Pojazdy', '🚗', 'Vehicles');
 
   /// Nazwa tematu do wyświetlenia w UI
   final String displayName;
@@ -25,6 +25,9 @@ enum Topic {
   /// Emoji reprezentujące temat
   final String emoji;
 
+  /// Angielska nazwa tematu (do promptu LLM)
+  final String promptName;
+
   /// Konstruktor tematu
-  const Topic(this.displayName, this.emoji);
+  const Topic(this.displayName, this.emoji, this.promptName);
 }

@@ -1,0 +1,3 @@
+[submodule "zagadkobot/android/app/src/main/cpp/llama.cpp"]
+	path = zagadkobot/android/app/src/main/cpp/llama.cpp
+	url = https://github.com/ggerganov/llama.cpp.git
