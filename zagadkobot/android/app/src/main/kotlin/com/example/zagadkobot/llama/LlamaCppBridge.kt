@@ -215,10 +215,14 @@ class LlamaCppBridge : FlutterPlugin, MethodChannel.MethodCallHandler {
             java.io.File("/data/local/tmp/zagadkobot"),
         )
         for (dir in searchDirs) {
-            val gguf = dir.listFiles { file -> file.extension == "gguf" }?.firstOrNull()
-            if (gguf != null) {
-                Log.d(TAG, "Znaleziono model: ${gguf.absolutePath}")
-                return gguf.absolutePath
+            val ggufFiles = dir.listFiles { file -> file.extension == "gguf" } ?: continue
+            // Preferuj Qwen jeśli jest dostępny
+            val preferred = ggufFiles.firstOrNull {
+                it.name.contains("qwen", ignoreCase = true)
+            } ?: ggufFiles.firstOrNull()
+            if (preferred != null) {
+                Log.d(TAG, "Znaleziono model: ${preferred.absolutePath}")
+                return preferred.absolutePath
             }
         }
         throw IllegalStateException(

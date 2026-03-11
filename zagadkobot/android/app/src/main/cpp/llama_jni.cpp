@@ -125,7 +125,6 @@ Java_com_example_zagadkobot_llama_LlamaCpp_nativeGenerate(
     llama_sampler_chain_add(wrapper->sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
 
     // Budujemy pełny prompt w formacie ChatML (Qwen2.5)
-    // "RIDDLE:" priming forces the model to start generating the riddle directly
     std::string fullPrompt =
         "<|im_start|>system\n" + std::string(systemPrompt) + "<|im_end|>\n"
         "<|im_start|>user\n" + std::string(prompt) + "<|im_end|>\n"

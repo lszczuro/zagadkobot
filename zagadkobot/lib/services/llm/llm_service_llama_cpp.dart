@@ -16,14 +16,10 @@ class LlmServiceLlamaCpp implements LlmService {
   bool _initialized = false;
 
   /// Parametry inference.
-  static const double temperature = 0.8;
+  static const double temperature = 0.7;
   static const double topP = 0.9;
-  static const int maxTokens = 100;
-  static const int nThreads = 8;
-
-  /// Regex detecting a complete riddle response — stops generation early.
-  static final _completeRiddlePattern =
-      RegExp(r'CORRECT:\s*[ABC]', caseSensitive: false);
+  static const int maxTokens = 150;
+  static const int nThreads = 4;
 
   @override
   bool get isInitialized => _initialized;
@@ -45,21 +41,13 @@ class LlmServiceLlamaCpp implements LlmService {
     assert(isInitialized, 'Wywołaj initialize() przed generateStream()');
 
     final controller = StreamController<String>();
-    final buffer = StringBuffer();
 
     // Najpierw podpinamy EventChannel (żeby EventSink był gotowy),
     // dopiero potem startujemy generowanie.
     final subscription = _eventChannel.receiveBroadcastStream().listen(
       (event) {
         if (event is String) {
-          buffer.write(event);
           controller.add(event);
-
-          // Stop generation once we have a complete riddle
-          if (_completeRiddlePattern.hasMatch(buffer.toString())) {
-            _methodChannel.invokeMethod<void>('stopGeneration');
-            controller.close();
-          }
         }
       },
       onError: (Object error) {
@@ -80,11 +68,11 @@ class LlmServiceLlamaCpp implements LlmService {
     _methodChannel
         .invokeMethod<void>('startGeneration', {'prompt': prompt})
         .catchError((Object error) {
-      controller.addError(
-        error is Exception ? error : Exception(error.toString()),
-      );
-      controller.close();
-    });
+          controller.addError(
+            error is Exception ? error : Exception(error.toString()),
+          );
+          controller.close();
+        });
 
     return controller.stream;
   }
