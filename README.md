@@ -108,5 +108,6 @@ Aplikacja wymaga załadowanego modelu GGUF w ścieżce oczekiwanej przez `LlmSer
 | UI quizu (pytanie + przyciski + komentarz LLM) | ✅ gotowe |
 | LLM runtime (llama.cpp via Platform Channel) | ✅ działa |
 | TTS (flutter_tts — placeholder) | ✅ działa |
-| Fine-tuning Qwen3.5-4B | ⏳ w toku |
-| Testy fine-tunowanego modelu na urządzeniu | ⏳ do zrobienia |
+| Fine-tuning Qwen3.5-4B (`Q4_K_M.gguf`) | ✅ gotowe |
+| Testy modelu na urządzeniu | ✅ działa (~3.6 tok/s) |
+| Ocena jakości komentarzy / fine-tuning v2 | ⏳ do zrobienia |

@@ -59,6 +59,35 @@ Baza zagadek (JSON) → losowanie → wyświetlenie pytania + 3 opcje → odpowi
 
 ---
 
+### 12.03.2026 — Testy modelu na urządzeniu
+
+**Co robiłem:**
+
+Po skończonym fine-tuningu uruchomiłem model `Qwen3.5-4B.Q4_K_M.gguf` na prawdziwym urządzeniu Android i zmierzyłem performance.
+
+**Wyniki (pierwsze testy na urządzeniu):**
+
+| Metryka | Wartość |
+|---------|---------|
+| Model | `Qwen3.5-4B.Q4_K_M.gguf` |
+| TTFT | **6862 ms** (~7 s do pierwszego tokenu) |
+| Tokeny (komentarz) | 32 |
+| Czas całkowity | 9.6 s |
+| Prędkość | **3.6 tok/s** |
+
+**Parametry inference:** temperature 0.7, top_p 0.9, max_tokens 150, n_threads 4
+
+**Obserwacje:**
+- Model generuje komentarze po polsku — zadanie wąskie (1–2 zdania) jest w zasięgu modelu 4B
+- TTFT ~7 s jest odczuwalny przez użytkownika; prędkość 3.6 tok/s oznacza ok. 9 s na 32 tokeny
+- Komentarz przykładowy: *„Ojej, to nie to zwierzątko. Pomyśl, kto może przetrwać bez wody i żywności tak długo ???"* — model trzyma rolę Zgadusia i język polski, ale nie jest to wystarczająca jakość odpowiedzi
+- Następny krok: ocena jakości komentarzy (halucynacje, język, emocje) + ewentualny tuning n_threads / kontekstu
+
+![Ekran zagadki](2026-03-12-example-riddle-screenshot.png)
+![Dialog z parametrami modelu](2026-03-12-parameters.jpg)
+
+---
+
 ### 12.03.2026 — Fine-tuning Qwen3.5-4B
 
 **Co robiłem:**
@@ -107,5 +136,6 @@ Baza zagadek (JSON) → losowanie → wyświetlenie pytania + 3 opcje → odpowi
 - ✅ Model wybrany: `unsloth/Qwen3.5-4B`, kwantyzacja `q4_k_m`
 - ✅ Pipeline fine-tuningu skonfigurowany (Unsloth + Colab T4, LoRA r=32)
 - ✅ Format danych treningowych zweryfikowany (ChatML, tokeny `<|im_start|>`/`<|im_end|>`)
-- ⏳ Fine-tuning Qwen3.5-4B — trening w toku (blokada: problemy środowiskowe Colab rozwiązane)
-- ⏳ Eksport GGUF i testy modelu po fine-tuningu na urządzeniu — do zrobienia
+- ✅ Fine-tuning Qwen3.5-4B — ukończony, model wyeksportowany jako `Qwen3.5-4B.Q4_K_M.gguf`
+- ✅ Testy modelu na urządzeniu — model działa, generuje komentarze po polsku (~3.6 tok/s, TTFT ~7 s)
+- ⏳ Ocena jakości komentarzy i ewentualny fine-tuning v2

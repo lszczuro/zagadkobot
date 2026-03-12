@@ -28,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String _comment = '';
   String? _modelName;
   StreamSubscription<String>? _sub;
+  _LlmStats? _lastStats;
 
   @override
   void initState() {
@@ -87,17 +88,32 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     final stream = _llm.generateStream(prompt);
+    final sw = Stopwatch()..start();
+    Duration? ttft;
+    int tokenCount = 0;
+
     _sub = stream.listen(
       (token) {
+        if (tokenCount == 0) ttft = sw.elapsed;
+        tokenCount++;
         if (mounted) setState(() => _comment += token);
       },
       onDone: () {
+        sw.stop();
         if (mounted) {
-          setState(() => _phase = _Phase.done);
+          setState(() {
+            _phase = _Phase.done;
+            _lastStats = _LlmStats(
+              ttft: ttft ?? Duration.zero,
+              totalTime: sw.elapsed,
+              tokenCount: tokenCount,
+            );
+          });
           _tts.speak(_comment);
         }
       },
       onError: (_) {
+        sw.stop();
         // Fallback do predefiniowanego komentarza z bazy
         final fallback = isCorrect ? riddle.zgadusCorrect : riddle.zgadusIncorrect;
         if (mounted) {
@@ -133,6 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
               comment: _comment,
               phase: _phase,
               modelName: _modelName,
+              lastStats: _lastStats,
               onAnswer: _onAnswer,
               onNext: () => _nextRiddle(),
             ),
@@ -212,6 +229,7 @@ class _QuizView extends StatelessWidget {
     required this.onAnswer,
     required this.onNext,
     this.modelName,
+    this.lastStats,
   });
 
   final Riddle riddle;
@@ -219,6 +237,7 @@ class _QuizView extends StatelessWidget {
   final String comment;
   final _Phase phase;
   final String? modelName;
+  final _LlmStats? lastStats;
   final void Function(int) onAnswer;
   final VoidCallback onNext;
 
@@ -250,14 +269,34 @@ class _QuizView extends StatelessWidget {
                 onPressed: () => showDialog<void>(
                   context: context,
                   builder: (_) => AlertDialog(
-                    title: const Text('Ustawienia'),
+                    title: const Text('Informacje o modelu'),
                     content: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text('Model LLM:', style: TextStyle(fontWeight: FontWeight.bold)),
                         const SizedBox(height: 4),
-                        Text(modelName ?? 'brak modelu'),
+                        Text(modelName ?? 'brak modelu', style: const TextStyle(fontFamily: 'monospace', fontSize: 13)),
+                        const SizedBox(height: 12),
+                        const Text('Parametry:', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 4),
+                        _InfoTable(rows: [
+                          ('temperature', '${LlmServiceLlamaCpp.temperature}'),
+                          ('top_p', '${LlmServiceLlamaCpp.topP}'),
+                          ('max_tokens', '${LlmServiceLlamaCpp.maxTokens}'),
+                          ('n_threads', '${LlmServiceLlamaCpp.nThreads}'),
+                        ]),
+                        if (lastStats != null) ...[
+                          const SizedBox(height: 12),
+                          const Text('Ostatnia generacja:', style: TextStyle(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 4),
+                          _InfoTable(rows: [
+                            ('TTFT', '${lastStats!.ttft.inMilliseconds} ms'),
+                            ('tokeny', '${lastStats!.tokenCount}'),
+                            ('czas', '${(lastStats!.totalTime.inMilliseconds / 1000).toStringAsFixed(1)} s'),
+                            ('tok/s', lastStats!.tokensPerSecond.toStringAsFixed(1)),
+                          ]),
+                        ],
                       ],
                     ),
                     actions: [
@@ -514,6 +553,52 @@ class _CommentCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ─── LLM stats ────────────────────────────────────────────────────────────────
+
+class _LlmStats {
+  const _LlmStats({
+    required this.ttft,
+    required this.totalTime,
+    required this.tokenCount,
+  });
+
+  final Duration ttft;
+  final Duration totalTime;
+  final int tokenCount;
+
+  double get tokensPerSecond =>
+      totalTime.inMilliseconds > 0 ? tokenCount / totalTime.inSeconds : 0;
+}
+
+// ─── Info table ───────────────────────────────────────────────────────────────
+
+class _InfoTable extends StatelessWidget {
+  const _InfoTable({required this.rows});
+  final List<(String, String)> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    final labelStyle = TextStyle(
+      fontSize: 12,
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    );
+    final valueStyle = labelStyle.copyWith(fontWeight: FontWeight.w600, fontFamily: 'monospace');
+    return Table(
+      columnWidths: const {0: IntrinsicColumnWidth(), 1: FlexColumnWidth()},
+      children: [
+        for (final (label, value) in rows)
+          TableRow(children: [
+            Padding(
+              padding: const EdgeInsets.only(right: 12, bottom: 2),
+              child: Text(label, style: labelStyle),
+            ),
+            Text(value, style: valueStyle),
+          ]),
+      ],
     );
   }
 }
