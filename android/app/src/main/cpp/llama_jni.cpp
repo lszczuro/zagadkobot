@@ -17,6 +17,12 @@ struct LlamaContext {
     int n_threads;
 };
 
+static void llama_log_callback(ggml_log_level level, const char* text, void*) {
+    int prio = (level == GGML_LOG_LEVEL_ERROR) ? ANDROID_LOG_ERROR :
+               (level == GGML_LOG_LEVEL_WARN)  ? ANDROID_LOG_WARN  : ANDROID_LOG_DEBUG;
+    __android_log_print(prio, "llama.cpp", "%s", text);
+}
+
 extern "C" {
 
 /**
@@ -37,6 +43,9 @@ Java_com_example_zagadkobot_llama_LlamaCpp_nativeLoadModel(
     }
 
     LOGI("Ładowanie modelu: %s (threads=%d)", path, nThreads);
+
+    // Przekieruj logi llama.cpp do Android logcat
+    llama_log_set(llama_log_callback, nullptr);
 
     // Inicjalizacja llama backend
     llama_backend_init();
@@ -154,7 +163,7 @@ Java_com_example_zagadkobot_llama_LlamaCpp_nativeGenerate(
     tokens.resize(n_tokens);
 
     // Reset KV cache
-    llama_kv_cache_clear(wrapper->ctx);
+    llama_memory_clear(llama_get_memory(wrapper->ctx), false);
 
     // Przetwarzanie promptu (prefill)
     llama_batch batch = llama_batch_get_one(tokens.data(), n_tokens);

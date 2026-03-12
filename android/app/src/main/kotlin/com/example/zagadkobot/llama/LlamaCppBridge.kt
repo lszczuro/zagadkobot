@@ -43,6 +43,7 @@ class LlamaCppBridge : FlutterPlugin, MethodChannel.MethodCallHandler {
     private var maxTokens: Int = 150
     private var temperature: Float = 0.8f
     private var topP: Float = 0.9f
+    private var loadedModelName: String = ""
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         context = binding.applicationContext
@@ -95,7 +96,8 @@ class LlamaCppBridge : FlutterPlugin, MethodChannel.MethodCallHandler {
                 val success = llamaCpp.loadModel(modelPath, nThreads)
                 withContext(Dispatchers.Main) {
                     if (success) {
-                        result.success(null)
+                        loadedModelName = java.io.File(modelPath).name
+                        result.success(loadedModelName)
                     } else {
                         result.error(
                             "INIT_FAILED",
@@ -216,8 +218,10 @@ class LlamaCppBridge : FlutterPlugin, MethodChannel.MethodCallHandler {
         )
         for (dir in searchDirs) {
             val ggufFiles = dir.listFiles { file -> file.extension == "gguf" } ?: continue
-            // Preferuj Qwen jeśli jest dostępny
+            // Preferuj Qwen3.5, potem dowolny Qwen, potem pierwszy z brzegu
             val preferred = ggufFiles.firstOrNull {
+                it.name.contains("Qwen3.5", ignoreCase = true)
+            } ?: ggufFiles.firstOrNull {
                 it.name.contains("qwen", ignoreCase = true)
             } ?: ggufFiles.firstOrNull()
             if (preferred != null) {

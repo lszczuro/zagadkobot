@@ -26,6 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Riddle? _riddle;
   int? _selectedIndex;
   String _comment = '';
+  String? _modelName;
   StreamSubscription<String>? _sub;
 
   @override
@@ -41,6 +42,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _tts.initialize(),
         _repo.load(),
       ]);
+      _modelName = _llm.modelName;
       _nextRiddle(first: true);
     } catch (e) {
       if (mounted) {
@@ -130,6 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
               selectedIndex: _selectedIndex,
               comment: _comment,
               phase: _phase,
+              modelName: _modelName,
               onAnswer: _onAnswer,
               onNext: () => _nextRiddle(),
             ),
@@ -208,12 +211,14 @@ class _QuizView extends StatelessWidget {
     required this.phase,
     required this.onAnswer,
     required this.onNext,
+    this.modelName,
   });
 
   final Riddle riddle;
   final int? selectedIndex;
   final String comment;
   final _Phase phase;
+  final String? modelName;
   final void Function(int) onAnswer;
   final VoidCallback onNext;
 
@@ -239,6 +244,30 @@ class _QuizView extends StatelessWidget {
               _CategoryChip(
                 category: riddle.category,
                 difficulty: riddle.difficulty,
+              ),
+              IconButton(
+                icon: const Icon(Icons.settings_rounded, color: Color(0xFF5C3D91)),
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: const Text('Ustawienia'),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Model LLM:', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 4),
+                        Text(modelName ?? 'brak modelu'),
+                      ],
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Zamknij'),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),

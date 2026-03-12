@@ -14,6 +14,7 @@ class LlmServiceLlamaCpp implements LlmService {
   static const _eventChannel = EventChannel('com.zagadkownik/llama_stream');
 
   bool _initialized = false;
+  String? _modelName;
 
   /// Parametry inference.
   static const double temperature = 0.7;
@@ -25,8 +26,11 @@ class LlmServiceLlamaCpp implements LlmService {
   bool get isInitialized => _initialized;
 
   @override
+  String? get modelName => _modelName;
+
+  @override
   Future<void> initialize() async {
-    await _methodChannel.invokeMethod<void>('initialize', {
+    _modelName = await _methodChannel.invokeMethod<String>('initialize', {
       'temperature': temperature,
       'top_p': topP,
       'max_tokens': maxTokens,
@@ -34,6 +38,7 @@ class LlmServiceLlamaCpp implements LlmService {
       'system_prompt': llmSystemPrompt,
     });
     _initialized = true;
+    _modelName ??= 'nieznany';
   }
 
   @override
