@@ -27,6 +27,9 @@ class _LlmDemoPanelState extends State<LlmDemoPanel> {
   Topic _selectedTopic = Topic.animals;
   StreamSubscription<String>? _subscription;
 
+  Duration? _modelLoadTime;
+  _GenerationStats? _lastStats;
+
   @override
   void initState() {
     super.initState();
@@ -34,9 +37,16 @@ class _LlmDemoPanelState extends State<LlmDemoPanel> {
   }
 
   Future<void> _initLlm() async {
+    final sw = Stopwatch()..start();
     try {
       await widget.llmService.initialize();
-      if (mounted) setState(() => _status = _Status.ready);
+      sw.stop();
+      if (mounted) {
+        setState(() {
+          _status = _Status.ready;
+          _modelLoadTime = sw.elapsed;
+        });
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -51,14 +61,21 @@ class _LlmDemoPanelState extends State<LlmDemoPanel> {
     setState(() {
       _status = _Status.generating;
       _error = null;
+      _lastStats = null;
     });
     widget.outputController.text = '';
 
     final prompt = buildRiddlePrompt(_selectedTopic.promptName);
     final stream = widget.llmService.generateStream(prompt);
 
+    final sw = Stopwatch()..start();
+    Duration? ttft;
+    int tokenCount = 0;
+
     _subscription = stream.listen(
       (token) {
+        if (tokenCount == 0) ttft = sw.elapsed;
+        tokenCount++;
         widget.outputController.text += token;
       },
       onError: (Object e) {
@@ -70,7 +87,17 @@ class _LlmDemoPanelState extends State<LlmDemoPanel> {
         }
       },
       onDone: () {
-        if (mounted) setState(() => _status = _Status.ready);
+        sw.stop();
+        if (mounted) {
+          setState(() {
+            _status = _Status.ready;
+            _lastStats = _GenerationStats(
+              ttft: ttft ?? Duration.zero,
+              totalTime: sw.elapsed,
+              tokenCount: tokenCount,
+            );
+          });
+        }
       },
     );
   }
@@ -135,6 +162,21 @@ class _LlmDemoPanelState extends State<LlmDemoPanel> {
                 ),
               ),
             ],
+            if (_modelLoadTime != null) ...[
+              const SizedBox(height: 8),
+              _StatsRow(items: [
+                ('model', '${_modelLoadTime!.inMilliseconds} ms'),
+              ]),
+            ],
+            if (_lastStats != null) ...[
+              const SizedBox(height: 4),
+              _StatsRow(items: [
+                ('TTFT', '${_lastStats!.ttft.inMilliseconds} ms'),
+                ('tokeny', '${_lastStats!.tokenCount}'),
+                ('czas', '${(_lastStats!.totalTime.inMilliseconds / 1000).toStringAsFixed(1)} s'),
+                ('tok/s', _lastStats!.tokensPerSecond.toStringAsFixed(1)),
+              ]),
+            ],
             const SizedBox(height: 12),
             Row(children: [
               Expanded(
@@ -175,6 +217,46 @@ class _LlmDemoPanelState extends State<LlmDemoPanel> {
 }
 
 enum _Status { loading, ready, generating, error }
+
+class _StatsRow extends StatelessWidget {
+  const _StatsRow({required this.items});
+  final List<(String, String)> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Theme.of(context).colorScheme.onSurfaceVariant;
+    return Row(
+      children: [
+        for (final (label, value) in items) ...[
+          Text(
+            '$label: ',
+            style: TextStyle(fontSize: 11, color: color),
+          ),
+          Text(
+            value,
+            style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(width: 12),
+        ],
+      ],
+    );
+  }
+}
+
+class _GenerationStats {
+  const _GenerationStats({
+    required this.ttft,
+    required this.totalTime,
+    required this.tokenCount,
+  });
+
+  final Duration ttft;
+  final Duration totalTime;
+  final int tokenCount;
+
+  double get tokensPerSecond =>
+      totalTime.inMilliseconds > 0 ? tokenCount / totalTime.inSeconds : 0;
+}
 
 class _StatusChip extends StatelessWidget {
   const _StatusChip({required this.status});
