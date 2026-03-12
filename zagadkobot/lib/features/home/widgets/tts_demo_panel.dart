@@ -44,11 +44,12 @@ class _TtsDemoPanelState extends State<TtsDemoPanel> {
       await widget.ttsService.initialize();
       if (mounted) setState(() => _status = _Status.ready);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _status = _Status.error;
           _error = e.toString();
         });
+      }
     }
   }
 
@@ -66,11 +67,12 @@ class _TtsDemoPanelState extends State<TtsDemoPanel> {
       await widget.ttsService.speak(text);
       if (mounted) setState(() => _status = _Status.ready);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _status = _Status.error;
           _error = e.toString();
         });
+      }
     } finally {
       _speaking = false;
     }
