@@ -17,9 +17,9 @@ class LlmServiceLlamaCpp implements LlmService {
   String? _modelName;
 
   /// Parametry inference.
-  static const double temperature = 0.7;
+  static const double temperature = 0.5;
   static const double topP = 0.9;
-  static const int maxTokens = 150;
+  static const int maxTokens = 60;
   static const int nThreads = 4;
 
   @override

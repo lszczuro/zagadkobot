@@ -52,6 +52,8 @@ Java_com_example_zagadkobot_llama_LlamaCpp_nativeLoadModel(
 
     // Parametry modelu
     llama_model_params model_params = llama_model_default_params();
+    // Vulkan/Adreno 830: n_gpu_layers > 0 powoduje błędy (DEVICE_LOST lub garbage output).
+    // Znany problem sterownika Qualcomm Vulkan z ggml. Zostawić 0 do czasu naprawy w llama.cpp.
 
     llama_model* model = llama_model_load_from_file(path, model_params);
     env->ReleaseStringUTFChars(modelPath, path);

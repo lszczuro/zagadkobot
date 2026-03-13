@@ -10,8 +10,8 @@ set(LLAMA_STATIC ON CACHE BOOL "" FORCE)
 set(LLAMA_NATIVE OFF CACHE BOOL "" FORCE)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 set(GGML_OPENMP OFF CACHE BOOL "" FORCE)
+set(GGML_VULKAN OFF CACHE BOOL "" FORCE)
 
-# Dodaj llama.cpp jako subdirectory
 add_subdirectory(${LLAMA_CPP_DIR} llama.cpp)
 
 # Nasza biblioteka JNI
