@@ -43,6 +43,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+android/build_log*.txt
+android/ggml-vulkan.*
 
 out.txt
 test.json
@@ -51,3 +53,4 @@ test.json
 assets/models/
 
 .env
+
