@@ -57,6 +57,14 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  String _buildQuestionSpeech(Riddle riddle) {
+    final answers = riddle.answers;
+    return '${riddle.question} '
+        'Czy to A: ${answers[0]}? '
+        'Czy B: ${answers[1]}? '
+        'Czy C: ${answers[2]}?';
+  }
+
   void _nextRiddle({bool first = false}) {
     _sub?.cancel();
     _sub = null;
@@ -67,7 +75,12 @@ class _HomeScreenState extends State<HomeScreen> {
       _comment = '';
       _phase = _Phase.question;
     });
-    _tts.speak(riddle.question);
+    _tts.speak(_buildQuestionSpeech(riddle));
+  }
+
+  void _speakQuestion() {
+    _tts.stop();
+    _tts.speak(_buildQuestionSpeech(_riddle!));
   }
 
   Future<void> _onAnswer(int index) async {
@@ -111,7 +124,7 @@ class _HomeScreenState extends State<HomeScreen> {
               tokenCount: tokenCount,
             );
           });
-          _tts.speak(_comment);
+          _tts.speak('Poprawna odpowiedź: ${riddle.answers[riddle.correctIndex]}. $_comment');
         }
       },
       onError: (_) {
@@ -123,7 +136,7 @@ class _HomeScreenState extends State<HomeScreen> {
             _comment = fallback;
             _phase = _Phase.done;
           });
-          _tts.speak(fallback);
+          _tts.speak('Poprawna odpowiedź: ${riddle.answers[riddle.correctIndex]}. $fallback');
         }
       },
     );
@@ -154,6 +167,7 @@ class _HomeScreenState extends State<HomeScreen> {
               lastStats: _lastStats,
               onAnswer: _onAnswer,
               onNext: () => _nextRiddle(),
+              onRepeatQuestion: _speakQuestion,
             ),
         },
       ),
@@ -230,6 +244,7 @@ class _QuizView extends StatelessWidget {
     required this.phase,
     required this.onAnswer,
     required this.onNext,
+    required this.onRepeatQuestion,
     this.modelName,
     this.lastStats,
   });
@@ -242,6 +257,7 @@ class _QuizView extends StatelessWidget {
   final _LlmStats? lastStats;
   final void Function(int) onAnswer;
   final VoidCallback onNext;
+  final VoidCallback onRepeatQuestion;
 
   @override
   Widget build(BuildContext context) {
@@ -328,16 +344,29 @@ class _QuizView extends StatelessWidget {
                   ),
                   color: const Color(0xFF7C4DBC),
                   child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text(
-                      riddle.question,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        color: Colors.white,
-                        height: 1.4,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      textAlign: TextAlign.center,
+                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+                    child: Column(
+                      children: [
+                        Text(
+                          riddle.question,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            color: Colors.white,
+                            height: 1.4,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 4),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: IconButton(
+                            icon: const Icon(Icons.volume_up_rounded, color: Colors.white54),
+                            tooltip: 'Powtórz pytanie',
+                            onPressed: onRepeatQuestion,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
