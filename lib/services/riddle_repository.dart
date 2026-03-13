@@ -23,14 +23,14 @@ class RiddleRepository {
   /// Zwraca losową zagadkę. Wymaga wcześniejszego wywołania [load].
   Riddle random() {
     assert(isLoaded && _riddles!.isNotEmpty);
-    return _riddles![_rng.nextInt(_riddles!.length)];
+    return _riddles![_rng.nextInt(_riddles!.length)].shuffled(_rng);
   }
 
   /// Zwraca losową zagadkę inną niż [exclude].
   Riddle randomExcluding(String excludeId) {
     assert(isLoaded && _riddles!.isNotEmpty);
     final candidates = _riddles!.where((r) => r.id != excludeId).toList();
-    if (candidates.isEmpty) return _riddles![_rng.nextInt(_riddles!.length)];
-    return candidates[_rng.nextInt(candidates.length)];
+    if (candidates.isEmpty) return _riddles![_rng.nextInt(_riddles!.length)].shuffled(_rng);
+    return candidates[_rng.nextInt(candidates.length)].shuffled(_rng);
   }
 }
