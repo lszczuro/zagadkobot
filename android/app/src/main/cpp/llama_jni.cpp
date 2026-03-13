@@ -65,7 +65,7 @@ Java_com_example_zagadkobot_llama_LlamaCpp_nativeLoadModel(
 
     // Parametry kontekstu
     llama_context_params ctx_params = llama_context_default_params();
-    ctx_params.n_ctx = 256;
+    ctx_params.n_ctx = 512;
     ctx_params.n_threads = nThreads;
     ctx_params.n_threads_batch = nThreads;
 

@@ -124,19 +124,25 @@ class _HomeScreenState extends State<HomeScreen> {
               tokenCount: tokenCount,
             );
           });
-          _tts.speak('Poprawna odpowiedź: ${riddle.answers[riddle.correctIndex]}. $_comment');
+          _tts.speak(
+            'Poprawna odpowiedź: ${riddle.answers[riddle.correctIndex]}. $_comment',
+          );
         }
       },
       onError: (_) {
         sw.stop();
         // Fallback do predefiniowanego komentarza z bazy
-        final fallback = isCorrect ? riddle.zgadusCorrect : riddle.zgadusIncorrect;
+        final fallback = isCorrect
+            ? riddle.zgadusCorrect
+            : riddle.zgadusIncorrect;
         if (mounted) {
           setState(() {
             _comment = fallback;
             _phase = _Phase.done;
           });
-          _tts.speak('Poprawna odpowiedź: ${riddle.answers[riddle.correctIndex]}. $fallback');
+          _tts.speak(
+            'Poprawna odpowiedź: ${riddle.answers[riddle.correctIndex]}. $fallback',
+          );
         }
       },
     );
@@ -159,16 +165,16 @@ class _HomeScreenState extends State<HomeScreen> {
           _Phase.loading => const _LoadingView(),
           _Phase.error => _ErrorView(message: _errorMsg ?? 'Nieznany błąd'),
           _ => _QuizView(
-              riddle: _riddle!,
-              selectedIndex: _selectedIndex,
-              comment: _comment,
-              phase: _phase,
-              modelName: _modelName,
-              lastStats: _lastStats,
-              onAnswer: _onAnswer,
-              onNext: () => _nextRiddle(),
-              onRepeatQuestion: _speakQuestion,
-            ),
+            riddle: _riddle!,
+            selectedIndex: _selectedIndex,
+            comment: _comment,
+            phase: _phase,
+            modelName: _modelName,
+            lastStats: _lastStats,
+            onAnswer: _onAnswer,
+            onNext: () => _nextRiddle(),
+            onRepeatQuestion: _speakQuestion,
+          ),
         },
       ),
     );
@@ -283,7 +289,10 @@ class _QuizView extends StatelessWidget {
                 difficulty: riddle.difficulty,
               ),
               IconButton(
-                icon: const Icon(Icons.settings_rounded, color: Color(0xFF5C3D91)),
+                icon: const Icon(
+                  Icons.settings_rounded,
+                  color: Color(0xFF5C3D91),
+                ),
                 onPressed: () => showDialog<void>(
                   context: context,
                   builder: (_) => AlertDialog(
@@ -292,28 +301,56 @@ class _QuizView extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Model LLM:', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text(
+                          'Model LLM:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         const SizedBox(height: 4),
-                        Text(modelName ?? 'brak modelu', style: const TextStyle(fontFamily: 'monospace', fontSize: 13)),
+                        Text(
+                          modelName ?? 'brak modelu',
+                          style: const TextStyle(
+                            fontFamily: 'monospace',
+                            fontSize: 13,
+                          ),
+                        ),
                         const SizedBox(height: 12),
-                        const Text('Parametry:', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text(
+                          'Parametry:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         const SizedBox(height: 4),
-                        _InfoTable(rows: [
-                          ('temperature', '${LlmServiceLlamaCpp.temperature}'),
-                          ('top_p', '${LlmServiceLlamaCpp.topP}'),
-                          ('max_tokens', '${LlmServiceLlamaCpp.maxTokens}'),
-                          ('n_threads', '${LlmServiceLlamaCpp.nThreads}'),
-                        ]),
+                        _InfoTable(
+                          rows: [
+                            (
+                              'temperature',
+                              '${LlmServiceLlamaCpp.temperature}',
+                            ),
+                            ('top_p', '${LlmServiceLlamaCpp.topP}'),
+                            ('max_tokens', '${LlmServiceLlamaCpp.maxTokens}'),
+                            ('n_threads', '${LlmServiceLlamaCpp.nThreads}'),
+                          ],
+                        ),
                         if (lastStats != null) ...[
                           const SizedBox(height: 12),
-                          const Text('Ostatnia generacja:', style: TextStyle(fontWeight: FontWeight.bold)),
+                          const Text(
+                            'Ostatnia generacja:',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                           const SizedBox(height: 4),
-                          _InfoTable(rows: [
-                            ('TTFT', '${lastStats!.ttft.inMilliseconds} ms'),
-                            ('tokeny', '${lastStats!.tokenCount}'),
-                            ('czas', '${(lastStats!.totalTime.inMilliseconds / 1000).toStringAsFixed(1)} s'),
-                            ('tok/s', lastStats!.tokensPerSecond.toStringAsFixed(1)),
-                          ]),
+                          _InfoTable(
+                            rows: [
+                              ('TTFT', '${lastStats!.ttft.inMilliseconds} ms'),
+                              ('tokeny', '${lastStats!.tokenCount}'),
+                              (
+                                'czas',
+                                '${(lastStats!.totalTime.inMilliseconds / 1000).toStringAsFixed(1)} s',
+                              ),
+                              (
+                                'tok/s',
+                                lastStats!.tokensPerSecond.toStringAsFixed(1),
+                              ),
+                            ],
+                          ),
                         ],
                       ],
                     ),
@@ -361,7 +398,10 @@ class _QuizView extends StatelessWidget {
                         Align(
                           alignment: Alignment.centerRight,
                           child: IconButton(
-                            icon: const Icon(Icons.volume_up_rounded, color: Colors.white54),
+                            icon: const Icon(
+                              Icons.volume_up_rounded,
+                              color: Colors.white54,
+                            ),
                             tooltip: 'Powtórz pytanie',
                             onPressed: onRepeatQuestion,
                           ),
@@ -549,10 +589,7 @@ class _CommentCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            isCorrect ? '🎉' : '🤔',
-            style: const TextStyle(fontSize: 28),
-          ),
+          Text(isCorrect ? '🎉' : '🤔', style: const TextStyle(fontSize: 28)),
           const SizedBox(width: 12),
           Expanded(
             child: isGenerating && comment.isEmpty
@@ -568,7 +605,7 @@ class _CommentCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        'Zgadus myśli…',
+                        'Zgaduś myśli…',
                         style: TextStyle(color: color, fontSize: 14),
                       ),
                     ],
@@ -617,18 +654,23 @@ class _InfoTable extends StatelessWidget {
       fontSize: 12,
       color: Theme.of(context).colorScheme.onSurfaceVariant,
     );
-    final valueStyle = labelStyle.copyWith(fontWeight: FontWeight.w600, fontFamily: 'monospace');
+    final valueStyle = labelStyle.copyWith(
+      fontWeight: FontWeight.w600,
+      fontFamily: 'monospace',
+    );
     return Table(
       columnWidths: const {0: IntrinsicColumnWidth(), 1: FlexColumnWidth()},
       children: [
         for (final (label, value) in rows)
-          TableRow(children: [
-            Padding(
-              padding: const EdgeInsets.only(right: 12, bottom: 2),
-              child: Text(label, style: labelStyle),
-            ),
-            Text(value, style: valueStyle),
-          ]),
+          TableRow(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(right: 12, bottom: 2),
+                child: Text(label, style: labelStyle),
+              ),
+              Text(value, style: valueStyle),
+            ],
+          ),
       ],
     );
   }
