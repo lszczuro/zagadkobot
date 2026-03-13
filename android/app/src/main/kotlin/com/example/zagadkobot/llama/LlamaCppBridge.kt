@@ -12,7 +12,8 @@ import kotlinx.coroutines.*
  * Flutter Platform Channel bridge do llama.cpp.
  *
  * MethodChannel `com.zagadkownik/llama`:
- *   - `initialize` — ładuje model i ustawia parametry
+ *   - `listModels` — zwraca listę dostępnych plików .gguf
+ *   - `initialize(model_path)` — ładuje model i ustawia parametry
  *   - `startGeneration` — rozpoczyna generowanie tokenów
  *   - `stopGeneration` — przerywa generowanie
  *   - `dispose` — zwalnia zasoby
@@ -75,6 +76,7 @@ class LlamaCppBridge : FlutterPlugin, MethodChannel.MethodCallHandler {
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         Log.d(TAG, "onMethodCall: ${call.method}")
         when (call.method) {
+            "listModels" -> handleListModels(result)
             "initialize" -> handleInitialize(call, result)
             "startGeneration" -> handleStartGeneration(call, result)
             "stopGeneration" -> handleStopGeneration(result)
@@ -83,16 +85,37 @@ class LlamaCppBridge : FlutterPlugin, MethodChannel.MethodCallHandler {
         }
     }
 
+    private fun handleListModels(result: MethodChannel.Result) {
+        val searchDirs = listOf(
+            context.filesDir.resolve("models/llm"),
+            java.io.File("/data/local/tmp/zagadkobot"),
+        )
+        val models = mutableListOf<Map<String, String>>()
+        for (dir in searchDirs) {
+            val files = dir.listFiles { file ->
+                file.extension == "gguf" && !file.name.contains("mmproj", ignoreCase = true)
+            } ?: continue
+            for (file in files.sortedBy { it.name }) {
+                models.add(mapOf("name" to file.name, "path" to file.absolutePath))
+            }
+        }
+        result.success(models)
+    }
+
     private fun handleInitialize(call: MethodCall, result: MethodChannel.Result) {
         val nThreads = call.argument<Int>("n_threads") ?: 4
         temperature = call.argument<Double>("temperature")?.toFloat() ?: 0.8f
         topP = call.argument<Double>("top_p")?.toFloat() ?: 0.9f
         maxTokens = call.argument<Int>("max_tokens") ?: 150
         systemPrompt = call.argument<String>("system_prompt") ?: ""
+        val modelPath = call.argument<String>("model_path")
+        if (modelPath == null) {
+            result.error("INVALID_ARGS", "Brak argumentu 'model_path'", null)
+            return
+        }
 
         scope.launch {
             try {
-                val modelPath = resolveModelPath()
                 val success = llamaCpp.loadModel(modelPath, nThreads)
                 withContext(Dispatchers.Main) {
                     if (success) {
@@ -205,32 +228,4 @@ class LlamaCppBridge : FlutterPlugin, MethodChannel.MethodCallHandler {
         result.success(null)
     }
 
-    /**
-     * Rozwiązuje ścieżkę do pliku modelu GGUF.
-     * Szuka kolejno w:
-     *   1. files/models/llm (app internal)
-     *   2. /sdcard/Download/zagadkobot (przetrwa reinstall)
-     */
-    private fun resolveModelPath(): String {
-        val searchDirs = listOf(
-            context.filesDir.resolve("models/llm"),
-            java.io.File("/data/local/tmp/zagadkobot"),
-        )
-        for (dir in searchDirs) {
-            val ggufFiles = dir.listFiles { file -> file.extension == "gguf" } ?: continue
-            // Preferuj Qwen3.5, potem dowolny Qwen, potem pierwszy z brzegu
-            val preferred = ggufFiles.firstOrNull {
-                it.name.contains("Qwen3.5", ignoreCase = true)
-            } ?: ggufFiles.firstOrNull {
-                it.name.contains("qwen", ignoreCase = true)
-            } ?: ggufFiles.firstOrNull()
-            if (preferred != null) {
-                Log.d(TAG, "Znaleziono model: ${preferred.absolutePath}")
-                return preferred.absolutePath
-            }
-        }
-        throw IllegalStateException(
-            "Nie znaleziono pliku .gguf w: ${searchDirs.joinToString { it.absolutePath }}"
-        )
-    }
 }

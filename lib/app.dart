@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:zagadkobot/core/theme.dart';
-import 'package:zagadkobot/features/home/home_screen.dart';
+import 'package:zagadkobot/features/model_selection/model_selection_screen.dart';
 
 class ZagadkobotApp extends StatelessWidget {
   const ZagadkobotApp({super.key});
@@ -10,7 +10,7 @@ class ZagadkobotApp extends StatelessWidget {
     return MaterialApp(
       title: 'zagadkobot',
       theme: AppTheme.lightTheme,
-      home: const HomeScreen(),
+      home: const ModelSelectionScreen(),
       debugShowCheckedModeBanner: false,
     );
   }

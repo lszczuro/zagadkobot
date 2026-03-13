@@ -28,15 +28,29 @@ class LlmServiceLlamaCpp implements LlmService {
   @override
   String? get modelName => _modelName;
 
+  Future<List<Map<String, String>>> listModels() async {
+    final raw = await _methodChannel.invokeMethod<List<Object?>>('listModels');
+    if (raw == null) return [];
+    return raw
+        .whereType<Map<Object?, Object?>>()
+        .map((m) => {
+              'name': m['name']?.toString() ?? '',
+              'path': m['path']?.toString() ?? '',
+            })
+        .toList();
+  }
+
   @override
-  Future<void> initialize() async {
-    _modelName = await _methodChannel.invokeMethod<String>('initialize', {
+  Future<void> initialize({String? modelPath}) async {
+    final args = {
       'temperature': temperature,
       'top_p': topP,
       'max_tokens': maxTokens,
       'n_threads': nThreads,
       'system_prompt': llmSystemPrompt,
-    });
+      'model_path': modelPath,
+    };
+    _modelName = await _methodChannel.invokeMethod<String>('initialize', args);
     _initialized = true;
     _modelName ??= 'nieznany';
   }

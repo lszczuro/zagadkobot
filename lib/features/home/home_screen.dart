@@ -10,7 +10,9 @@ import 'package:zagadkobot/services/tts/tts_service_flutter_tts.dart';
 enum _Phase { loading, error, question, commenting, done }
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.modelPath});
+
+  final String? modelPath;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -39,7 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _init() async {
     try {
       await Future.wait([
-        _llm.initialize(),
+        _llm.initialize(modelPath: widget.modelPath),
         _tts.initialize(),
         _repo.load(),
       ]);
