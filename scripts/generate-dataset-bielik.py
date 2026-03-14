@@ -27,20 +27,20 @@ for riddle in riddles:
         ]
     })
 
-    # Przypadek 2: błędna odpowiedź (pierwsza zła opcja)
-    chosen_wrong = wrong_answers[0]
-    user_incorrect = (
-        f'Dziecko się pomyliło — myślało że "{chosen_wrong}", '
-        f'ale poprawna odpowiedź to "{correct_answer}". '
-        f'Zmotywuj je do dalszej zabawy.'
-    )
-    dataset.append({
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_incorrect},
-            {"role": "assistant", "content": riddle["zgadus_incorrect"]},
-        ]
-    })
+    # Przypadki 2+: błędna odpowiedź (każda zła opcja osobno)
+    for chosen_wrong in wrong_answers:
+        user_incorrect = (
+            f'Dziecko się pomyliło — myślało że "{chosen_wrong}", '
+            f'ale poprawna odpowiedź to "{correct_answer}". '
+            f'Zmotywuj je do dalszej zabawy.'
+        )
+        dataset.append({
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_incorrect},
+                {"role": "assistant", "content": riddle["zgadus_incorrect"]},
+            ]
+        })
 
 output_path = "../bielik_dataset.json"
 with open(output_path, "w", encoding="utf-8") as f:
