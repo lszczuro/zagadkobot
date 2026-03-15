@@ -1,74 +1,108 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:zagadkobot/features/generating/generating_screen.dart';
+import 'package:zagadkobot/features/answer/answer_screen.dart';
 import 'package:zagadkobot/models/llm_stats.dart';
 import 'package:zagadkobot/models/riddle.dart';
+import 'package:zagadkobot/services/llm/llm_prompt.dart';
 import 'package:zagadkobot/services/llm/llm_service_llama_cpp.dart';
 import 'package:zagadkobot/services/riddle_repository.dart';
 import 'package:zagadkobot/services/settings_service.dart';
 import 'package:zagadkobot/services/tts/tts_service_flutter_tts.dart';
-import 'package:zagadkobot/widgets/answer_button.dart';
 import 'package:zagadkobot/widgets/robot_painter.dart';
 
-class RiddleScreen extends StatefulWidget {
-  const RiddleScreen({
+class GeneratingScreen extends StatefulWidget {
+  const GeneratingScreen({
     super.key,
     required this.llm,
     required this.tts,
     required this.repo,
+    required this.riddle,
+    required this.selectedIndex,
     this.modelName,
-    this.excludeId,
     this.lastStats,
   });
 
   final LlmServiceLlamaCpp llm;
   final TtsServiceFlutterTts tts;
   final RiddleRepository repo;
+  final Riddle riddle;
+  final int selectedIndex;
   final String? modelName;
-  final String? excludeId;
   final LlmStats? lastStats;
 
   @override
-  State<RiddleScreen> createState() => _RiddleScreenState();
+  State<GeneratingScreen> createState() => _GeneratingScreenState();
 }
 
-class _RiddleScreenState extends State<RiddleScreen> {
-  late final Riddle _riddle;
+class _GeneratingScreenState extends State<GeneratingScreen> {
+  StreamSubscription<String>? _sub;
 
   @override
   void initState() {
     super.initState();
-    _riddle = widget.excludeId != null
-        ? widget.repo.randomExcluding(widget.excludeId!)
-        : widget.repo.random();
-    widget.tts.speak(_buildQuestionSpeech());
+    _generate();
   }
 
-  @override
-  void dispose() {
-    widget.tts.stop();
-    super.dispose();
+  Future<void> _generate() async {
+    final riddle = widget.riddle;
+    final isCorrect = widget.selectedIndex == riddle.correctIndex;
+    final prompt = buildCommentaryPrompt(
+      question: riddle.question,
+      correctAnswer: riddle.answers[riddle.correctIndex],
+      chosenAnswer: riddle.answers[widget.selectedIndex],
+      isCorrect: isCorrect,
+    );
+
+    final stream = widget.llm.generateStream(prompt);
+    final sw = Stopwatch()..start();
+    Duration? ttft;
+    int tokenCount = 0;
+    final buffer = StringBuffer();
+
+    _sub = stream.listen(
+      (token) {
+        if (tokenCount == 0) ttft = sw.elapsed;
+        tokenCount++;
+        buffer.write(token);
+      },
+      onDone: () {
+        sw.stop();
+        final stats = LlmStats(
+          ttft: ttft ?? Duration.zero,
+          totalTime: sw.elapsed,
+          tokenCount: tokenCount,
+        );
+        final comment = buffer.toString();
+        widget.tts.speak(
+          'Poprawna odpowiedź: ${riddle.answers[riddle.correctIndex]}. $comment',
+        );
+        if (mounted) _navigateToAnswer(comment, stats);
+      },
+      onError: (_) {
+        sw.stop();
+        final fallback =
+            isCorrect ? riddle.zgadusCorrect : riddle.zgadusIncorrect;
+        widget.tts.speak(
+          'Poprawna odpowiedź: ${riddle.answers[riddle.correctIndex]}. $fallback',
+        );
+        if (mounted) _navigateToAnswer(fallback, null);
+      },
+    );
   }
 
-  String _buildQuestionSpeech() {
-    final a = _riddle.answers;
-    return '${_riddle.question} '
-        'Czy to A: ${a[0]}? '
-        'Czy B: ${a[1]}? '
-        'Czy C: ${a[2]}?';
-  }
-
-  void _onAnswer(int index) {
-    widget.tts.stop();
+  void _navigateToAnswer(String comment, LlmStats? stats) {
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (_, _, _) => GeneratingScreen(
+        pageBuilder: (_, _, _) => AnswerScreen(
           llm: widget.llm,
           tts: widget.tts,
           repo: widget.repo,
           modelName: widget.modelName,
-          riddle: _riddle,
-          selectedIndex: index,
-          lastStats: widget.lastStats,
+          riddle: widget.riddle,
+          selectedIndex: widget.selectedIndex,
+          comment: comment,
+          stats: stats,
         ),
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
@@ -77,7 +111,23 @@ class _RiddleScreenState extends State<RiddleScreen> {
   }
 
   @override
+  void dispose() {
+    _sub?.cancel();
+    super.dispose();
+  }
+
+  String _buildQuestionSpeech() {
+    final a = widget.riddle.answers;
+    return '${widget.riddle.question} '
+        'Czy to A: ${a[0]}? '
+        'Czy B: ${a[1]}? '
+        'Czy C: ${a[2]}?';
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final riddle = widget.riddle;
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -103,15 +153,16 @@ class _RiddleScreenState extends State<RiddleScreen> {
                     const SizedBox(width: 8),
                     Text(
                       'Zgaduś',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF5C3D91),
-                      ),
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF5C3D91),
+                          ),
                     ),
                     const Spacer(),
                     _CategoryChip(
-                      category: _riddle.category,
-                      difficulty: _riddle.difficulty,
+                      category: riddle.category,
+                      difficulty: riddle.difficulty,
                     ),
                     IconButton(
                       icon: const Icon(
@@ -155,7 +206,7 @@ class _RiddleScreenState extends State<RiddleScreen> {
                               ),
                               const SizedBox(height: 12),
                               Text(
-                                _riddle.question,
+                                riddle.question,
                                 style: const TextStyle(
                                   fontSize: 20,
                                   color: Colors.white,
@@ -169,7 +220,7 @@ class _RiddleScreenState extends State<RiddleScreen> {
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
                                   Text(
-                                    '${_riddle.question.length}',
+                                    '${riddle.question.length}',
                                     style: const TextStyle(
                                       fontSize: 13,
                                       color: Colors.white54,
@@ -184,7 +235,8 @@ class _RiddleScreenState extends State<RiddleScreen> {
                                     tooltip: 'Powtórz pytanie',
                                     onPressed: () {
                                       widget.tts.stop();
-                                      widget.tts.speak(_buildQuestionSpeech());
+                                      widget.tts
+                                          .speak(_buildQuestionSpeech());
                                     },
                                   ),
                                 ],
@@ -196,18 +248,19 @@ class _RiddleScreenState extends State<RiddleScreen> {
                       const SizedBox(height: 20),
 
                       // Answer buttons
-                      for (int i = 0; i < _riddle.answers.length; i++) ...[
-                        AnswerButton(
-                          label: _riddle.answers[i],
-                          index: i,
-                          selectedIndex: null,
-                          correctIndex: _riddle.correctIndex,
-                          answered: false,
-                          onTap: () => _onAnswer(i),
-                        ),
+                      for (int i = 0; i < riddle.answers.length; i++) ...[
+                        if (i == widget.selectedIndex)
+                          _ThinkingButton()
+                        else
+                          Opacity(
+                            opacity: 0.38,
+                            child: _DisabledAnswerButton(
+                              label: riddle.answers[i],
+                              index: i,
+                            ),
+                          ),
                         const SizedBox(height: 10),
                       ],
-                      const SizedBox(height: 16),
                     ],
                   ),
                 ),
@@ -215,6 +268,98 @@ class _RiddleScreenState extends State<RiddleScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ─── Thinking button ──────────────────────────────────────────────────────────
+
+class _ThinkingButton extends StatelessWidget {
+  const _ThinkingButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF8EC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE67E22), width: 2),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              color: const Color(0xFFE67E22),
+            ),
+          ),
+          const SizedBox(width: 14),
+          const Text(
+            'Zgaduś myśli…',
+            style: TextStyle(
+              fontSize: 16,
+              color: Color(0xFFE67E22),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Disabled answer button ───────────────────────────────────────────────────
+
+class _DisabledAnswerButton extends StatelessWidget {
+  const _DisabledAnswerButton({required this.label, required this.index});
+
+  final String label;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFDDD6F3), width: 2),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: const Color(0xFFDDD6F3).withAlpha(60),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              String.fromCharCode(65 + index),
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF333333),
+                fontSize: 15,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 16,
+                color: Color(0xFF333333),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -447,4 +592,3 @@ class _InfoTable extends StatelessWidget {
     );
   }
 }
-
