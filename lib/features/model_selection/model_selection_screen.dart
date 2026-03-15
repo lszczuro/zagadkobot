@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:zagadkobot/features/home/home_screen.dart';
 import 'package:zagadkobot/services/llm/llm_service_llama_cpp.dart';
+import 'package:zagadkobot/services/settings_service.dart';
 
 class ModelSelectionScreen extends StatefulWidget {
   const ModelSelectionScreen({super.key});
@@ -39,7 +40,11 @@ class _ModelSelectionScreenState extends State<ModelSelectionScreen> {
     }
   }
 
-  void _start() {
+  Future<void> _start() async {
+    if (_selected?['path'] != null) {
+      await SettingsService.saveModelPath(_selected!['path']!);
+    }
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (_) => HomeScreen(modelPath: _selected?['path']),

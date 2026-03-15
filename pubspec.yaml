@@ -13,6 +13,7 @@ dependencies:
   json_annotation: ^4.11.0
   flutter_tts: ^4.2.0
   path_provider: ^2.1.5
+  shared_preferences: ^2.3.2
 
 dev_dependencies:
   flutter_test:

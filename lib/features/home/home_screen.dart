@@ -5,6 +5,7 @@ import 'package:zagadkobot/models/riddle.dart';
 import 'package:zagadkobot/services/llm/llm_prompt.dart';
 import 'package:zagadkobot/services/llm/llm_service_llama_cpp.dart';
 import 'package:zagadkobot/services/riddle_repository.dart';
+import 'package:zagadkobot/services/settings_service.dart';
 import 'package:zagadkobot/services/tts/tts_service_flutter_tts.dart';
 
 enum _Phase { loading, error, question, commenting, done }
@@ -295,71 +296,9 @@ class _QuizView extends StatelessWidget {
                 ),
                 onPressed: () => showDialog<void>(
                   context: context,
-                  builder: (_) => AlertDialog(
-                    title: const Text('Informacje o modelu'),
-                    content: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Model LLM:',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          modelName ?? 'brak modelu',
-                          style: const TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 13,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'Parametry:',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 4),
-                        _InfoTable(
-                          rows: [
-                            (
-                              'temperature',
-                              '${LlmServiceLlamaCpp.temperature}',
-                            ),
-                            ('top_p', '${LlmServiceLlamaCpp.topP}'),
-                            ('max_tokens', '${LlmServiceLlamaCpp.maxTokens}'),
-                            ('n_threads', '${LlmServiceLlamaCpp.nThreads}'),
-                          ],
-                        ),
-                        if (lastStats != null) ...[
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Ostatnia generacja:',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 4),
-                          _InfoTable(
-                            rows: [
-                              ('TTFT', '${lastStats!.ttft.inMilliseconds} ms'),
-                              ('tokeny', '${lastStats!.tokenCount}'),
-                              (
-                                'czas',
-                                '${(lastStats!.totalTime.inMilliseconds / 1000).toStringAsFixed(1)} s',
-                              ),
-                              (
-                                'tok/s',
-                                lastStats!.tokensPerSecond.toStringAsFixed(1),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ],
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Zamknij'),
-                      ),
-                    ],
+                  builder: (_) => _SettingsDialog(
+                    modelName: modelName,
+                    lastStats: lastStats,
                   ),
                 ),
               ),
@@ -671,6 +610,163 @@ class _InfoTable extends StatelessWidget {
               Text(value, style: valueStyle),
             ],
           ),
+      ],
+    );
+  }
+}
+
+// ─── Settings dialog ──────────────────────────────────────────────────────────
+
+class _SettingsDialog extends StatefulWidget {
+  const _SettingsDialog({this.modelName, this.lastStats});
+
+  final String? modelName;
+  final _LlmStats? lastStats;
+
+  @override
+  State<_SettingsDialog> createState() => _SettingsDialogState();
+}
+
+class _SettingsDialogState extends State<_SettingsDialog> {
+  final _llm = LlmServiceLlamaCpp();
+  List<Map<String, String>> _models = [];
+  Map<String, String>? _selected;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final results = await Future.wait([
+      SettingsService.getModelPath(),
+      _llm.listModels(),
+    ]);
+    final savedPath = results[0] as String?;
+    final models = results[1] as List<Map<String, String>>;
+    Map<String, String>? selected;
+    if (savedPath != null) {
+      try {
+        selected = models.firstWhere((m) => m['path'] == savedPath);
+      } catch (_) {
+        selected = models.isNotEmpty ? models.first : null;
+      }
+    } else {
+      selected = models.isNotEmpty ? models.first : null;
+    }
+    if (mounted) {
+      setState(() {
+        _models = models;
+        _selected = selected;
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _save() async {
+    if (_selected?['path'] != null) {
+      await SettingsService.saveModelPath(_selected!['path']!);
+    }
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Ustawienia'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Model:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text(
+              widget.modelName ?? 'brak modelu',
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Model przy następnym uruchomieniu:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            if (_loading)
+              const Center(child: CircularProgressIndicator())
+            else if (_models.isEmpty)
+              const Text('Nie znaleziono modeli')
+            else
+              InputDecorator(
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                ),
+                child: DropdownButton<Map<String, String>>(
+                  value: _selected,
+                  isExpanded: true,
+                  underline: const SizedBox.shrink(),
+                  items: _models
+                      .map(
+                        (m) => DropdownMenuItem(
+                          value: m,
+                          child: Text(
+                            m['name'] ?? '',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (val) => setState(() => _selected = val),
+                ),
+              ),
+            const SizedBox(height: 16),
+            const Text(
+              'Parametry:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            _InfoTable(
+              rows: [
+                ('temperature', '${LlmServiceLlamaCpp.temperature}'),
+                ('top_p', '${LlmServiceLlamaCpp.topP}'),
+                ('max_tokens', '${LlmServiceLlamaCpp.maxTokens}'),
+                ('n_threads', '${LlmServiceLlamaCpp.nThreads}'),
+              ],
+            ),
+            if (widget.lastStats != null) ...[
+              const SizedBox(height: 12),
+              const Text(
+                'Ostatnia generacja:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              _InfoTable(
+                rows: [
+                  ('TTFT', '${widget.lastStats!.ttft.inMilliseconds} ms'),
+                  ('tokeny', '${widget.lastStats!.tokenCount}'),
+                  (
+                    'czas',
+                    '${(widget.lastStats!.totalTime.inMilliseconds / 1000).toStringAsFixed(1)} s',
+                  ),
+                  ('tok/s', widget.lastStats!.tokensPerSecond.toStringAsFixed(1)),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Zamknij'),
+        ),
+        FilledButton(
+          onPressed: _loading ? null : _save,
+          child: const Text('Zapisz'),
+        ),
       ],
     );
   }
