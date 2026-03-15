@@ -7,7 +7,11 @@ import random
 import argparse
 import re
 import time
+import sys
 from pathlib import Path
+
+# Wymuś UTF-8 na Windows (obsługa emoji w terminalu)
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 try:
     from llama_cpp import Llama
