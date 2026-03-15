@@ -12,6 +12,9 @@ class FakeLlmService implements LlmService {
   final String _response;
   bool _initialized = false;
 
+  @override
+  String? get modelName => 'fake';
+
   FakeLlmService(this._response);
 
   @override
@@ -44,6 +47,9 @@ class ErrorLlmService implements LlmService {
 
   @override
   Future<void> initialize() async => _initialized = true;
+
+  @override
+  String? get modelName => 'fake';
 
   @override
   Stream<String> generateStream(String prompt) async* {
@@ -101,23 +107,26 @@ void main() {
   });
 
   group('ErrorLlmService', () {
-    test('strumień rzuca wyjątek, ale wcześniejsze tokeny są dostępne', () async {
-      final service = ErrorLlmService();
-      await service.initialize();
+    test(
+      'strumień rzuca wyjątek, ale wcześniejsze tokeny są dostępne',
+      () async {
+        final service = ErrorLlmService();
+        await service.initialize();
 
-      final buffer = StringBuffer();
-      Object? caughtError;
-      try {
-        await for (final token in service.generateStream('')) {
-          buffer.write(token);
+        final buffer = StringBuffer();
+        Object? caughtError;
+        try {
+          await for (final token in service.generateStream('')) {
+            buffer.write(token);
+          }
+        } catch (e) {
+          caughtError = e;
         }
-      } catch (e) {
-        caughtError = e;
-      }
 
-      expect(caughtError, isA<Exception>());
-      expect(buffer.toString(), contains('Brawo'));
-    });
+        expect(caughtError, isA<Exception>());
+        expect(buffer.toString(), contains('Brawo'));
+      },
+    );
   });
 
   group('llmSystemPrompt', () {
