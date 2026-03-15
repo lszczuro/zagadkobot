@@ -9,7 +9,7 @@ import 'package:zagadkobot/services/llm/llm_service_llama_cpp.dart';
 import 'package:zagadkobot/services/riddle_repository.dart';
 import 'package:zagadkobot/services/settings_service.dart';
 import 'package:zagadkobot/services/tts/tts_service_flutter_tts.dart';
-import 'package:zagadkobot/widgets/robot_painter.dart';
+import 'package:zagadkobot/widgets/robot_widget.dart';
 
 class GeneratingScreen extends StatefulWidget {
   const GeneratingScreen({
@@ -196,7 +196,7 @@ class _GeneratingScreenState extends State<GeneratingScreen> {
                               SizedBox(
                                 width: 130,
                                 height: 110,
-                                child: CustomPaint(painter: RobotPainter()),
+                                child: RobotWidget(),
                               ),
                               const SizedBox(height: 12),
                               Text(
