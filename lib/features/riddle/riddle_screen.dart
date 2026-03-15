@@ -127,65 +127,73 @@ class _RiddleScreenState extends State<RiddleScreen> {
               // ── Question + answers ───────────────────────────────────────
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(16, 110, 16, 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       // Question card
-                      Card(
-                        elevation: 4,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        color: const Color(0xFF7C4DBC),
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(24, 20, 24, 12),
-                          child: Column(
-                            children: [
-                              SizedBox(
-                                width: 130,
-                                height: 110,
-                                child: RobotWidget(),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                _riddle.question,
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  color: Colors.white,
-                                  height: 1.4,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
+                      Stack(
+                        clipBehavior: Clip.none,
+                        alignment: Alignment.topCenter,
+                        children: [
+                          Card(
+                            elevation: 4,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            color: const Color(0xFF7C4DBC),
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(24, 100, 24, 12),
+                              child: Column(
                                 children: [
                                   Text(
-                                    '${_riddle.question.length}',
+                                    _riddle.question,
                                     style: const TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.white54,
+                                      fontSize: 20,
+                                      color: Colors.white,
+                                      height: 1.4,
                                       fontWeight: FontWeight.w500,
                                     ),
+                                    textAlign: TextAlign.center,
                                   ),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.volume_up_rounded,
-                                      color: Colors.white54,
-                                    ),
-                                    tooltip: 'Powtórz pytanie',
-                                    onPressed: () {
-                                      widget.tts.stop();
-                                      widget.tts.speak(_buildQuestionSpeech());
-                                    },
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        '${_riddle.question.length}',
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.white54,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.volume_up_rounded,
+                                          color: Colors.white54,
+                                        ),
+                                        tooltip: 'Powtórz pytanie',
+                                        onPressed: () {
+                                          widget.tts.stop();
+                                          widget.tts.speak(_buildQuestionSpeech());
+                                        },
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
-                            ],
+                            ),
                           ),
-                        ),
+                          Positioned(
+                            top: -90,
+                            child: SizedBox(
+                              width: 200,
+                              height: 200,
+                              child: RobotWidget(),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 20),
 

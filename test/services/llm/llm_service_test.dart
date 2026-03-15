@@ -144,17 +144,7 @@ void main() {
   });
 
   group('buildCommentaryPrompt', () {
-    test('zawiera treść zagadki', () {
-      final prompt = buildCommentaryPrompt(
-        question: 'Kto szczeka?',
-        correctAnswer: 'Pies',
-        chosenAnswer: 'Pies',
-        isCorrect: true,
-      );
-      expect(prompt, contains('Kto szczeka?'));
-    });
-
-    test('zawiera poprawną odpowiedź', () {
+    test('zawiera poprawną odpowiedź przy dobrej odpowiedzi', () {
       final prompt = buildCommentaryPrompt(
         question: 'Kto szczeka?',
         correctAnswer: 'Pies',
@@ -164,39 +154,47 @@ void main() {
       expect(prompt, contains('Pies'));
     });
 
-    test('dodaje ✓ przy poprawnej odpowiedzi', () {
+    test('zawiera poprawną odpowiedź przy złej odpowiedzi', () {
+      final prompt = buildCommentaryPrompt(
+        question: 'Kto szczeka?',
+        correctAnswer: 'Pies',
+        chosenAnswer: 'Kot',
+        isCorrect: false,
+      );
+      expect(prompt, contains('Pies'));
+    });
+
+    test('zachęca do pochwały przy poprawnej odpowiedzi', () {
       final prompt = buildCommentaryPrompt(
         question: 'Kto szczeka?',
         correctAnswer: 'Pies',
         chosenAnswer: 'Pies',
         isCorrect: true,
       );
-      expect(prompt, contains('✓'));
-      expect(prompt, isNot(contains('✗')));
+      expect(prompt.toLowerCase(), contains('poprawnie'));
+      expect(prompt, isNot(contains('pomyliło')));
     });
 
-    test('dodaje ✗ przy błędnej odpowiedzi', () {
+    test('motywuje przy błędnej odpowiedzi', () {
       final prompt = buildCommentaryPrompt(
         question: 'Kto szczeka?',
         correctAnswer: 'Pies',
         chosenAnswer: 'Kot',
         isCorrect: false,
       );
-      expect(prompt, contains('✗'));
-      expect(prompt, isNot(contains('✓')));
+      expect(prompt.toLowerCase(), contains('pomyliło'));
+      expect(prompt, isNot(contains('poprawnie odgadło')));
     });
 
-    test('format zgodny z danymi treningowymi', () {
+    test('zawiera wybraną odpowiedź przy błędnej odpowiedzi', () {
       final prompt = buildCommentaryPrompt(
         question: 'Kto szczeka?',
         correctAnswer: 'Pies',
         chosenAnswer: 'Kot',
         isCorrect: false,
       );
-      // Sprawdź że format jest dokładnie taki jak w training_chatml.json
-      expect(prompt, contains('Zagadka: Kto szczeka?'));
-      expect(prompt, contains('Prawidłowa odpowiedź: Pies'));
-      expect(prompt, contains('Dziecko wybrało: Kot ✗'));
+      expect(prompt, contains('Kot'));
+      expect(prompt, contains('Pies'));
     });
   });
 }

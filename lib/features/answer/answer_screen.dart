@@ -102,40 +102,48 @@ class AnswerScreen extends StatelessWidget {
               // ── Content ─────────────────────────────────────────────────
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(16, 110, 16, 16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       // Question card
-                      Card(
-                        elevation: 4,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        color: const Color(0xFF7C4DBC),
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
-                          child: Column(
-                            children: [
-                              SizedBox(
-                                width: 130,
-                                height: 110,
-                                child: RobotWidget(),
+                      Stack(
+                        clipBehavior: Clip.none,
+                        alignment: Alignment.topCenter,
+                        children: [
+                          Card(
+                            elevation: 4,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            color: const Color(0xFF7C4DBC),
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(24, 100, 24, 20),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    riddle.question,
+                                    style: const TextStyle(
+                                      fontSize: 20,
+                                      color: Colors.white,
+                                      height: 1.4,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 12),
-                              Text(
-                                riddle.question,
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  color: Colors.white,
-                                  height: 1.4,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
+                            ),
                           ),
-                        ),
+                          Positioned(
+                            top: -90,
+                            child: SizedBox(
+                              width: 200,
+                              height: 200,
+                              child: RobotWidget(),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 20),
 
