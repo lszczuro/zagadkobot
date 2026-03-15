@@ -69,12 +69,6 @@ class AnswerScreen extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: Row(
                   children: [
-                    SizedBox(
-                      width: 36,
-                      height: 36,
-                      child: CustomPaint(painter: RobotPainter()),
-                    ),
-                    const SizedBox(width: 8),
                     Text(
                       'Zgaduś',
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(

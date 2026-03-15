@@ -145,12 +145,6 @@ class _GeneratingScreenState extends State<GeneratingScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                 child: Row(
                   children: [
-                    SizedBox(
-                      width: 36,
-                      height: 36,
-                      child: CustomPaint(painter: RobotPainter()),
-                    ),
-                    const SizedBox(width: 8),
                     Text(
                       'Zgaduś',
                       style:
