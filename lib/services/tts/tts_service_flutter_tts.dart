@@ -25,7 +25,20 @@ class TtsServiceFlutterTts implements TtsService {
   @override
   Future<void> speak(String text) async {
     assert(isInitialized, 'Wywołaj initialize() przed speak()');
-    await _tts.speak(text);
+    await _tts.speak(_removeEmoji(text));
+  }
+
+  /// Usuwa znaki emoji z tekstu przed syntezą mowy.
+  static String _removeEmoji(String text) {
+    return text.replaceAll(
+      RegExp(
+        r'[\u{1F000}-\u{1FFFF}]|'   // główny blok emoji (1F...)
+        r'[\u{2600}-\u{27FF}]|'      // symbole, strzałki, Dingbats
+        r'[\u{FE00}-\u{FE0F}]',      // variation selectors
+        unicode: true,
+      ),
+      '',
+    );
   }
 
   @override

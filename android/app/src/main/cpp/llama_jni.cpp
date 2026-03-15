@@ -3,6 +3,41 @@
 #include <vector>
 #include <android/log.h>
 
+/// Konwertuje standardowy UTF-8 (z llama.cpp) na UTF-16 (jchar[]) wymagany przez
+/// env->NewString(). NewStringUTF() oczekuje Modified UTF-8 i nie obsługuje
+/// 4-bajtowych sekwencji (emoji, znaki CJK powyżej BMP) — stąd "śmieci" na ekranie.
+static std::u16string utf8ToUtf16(const char* utf8, int len) {
+    std::u16string result;
+    result.reserve(len);
+    const uint8_t* p = reinterpret_cast<const uint8_t*>(utf8);
+    const uint8_t* end = p + len;
+    while (p < end) {
+        uint32_t cp;
+        uint8_t c = *p;
+        if (c < 0x80) {
+            cp = c; p += 1;
+        } else if ((c & 0xE0) == 0xC0 && p + 1 < end) {
+            cp = (c & 0x1F) << 6 | (p[1] & 0x3F); p += 2;
+        } else if ((c & 0xF0) == 0xE0 && p + 2 < end) {
+            cp = (c & 0x0F) << 12 | (p[1] & 0x3F) << 6 | (p[2] & 0x3F); p += 3;
+        } else if ((c & 0xF8) == 0xF0 && p + 3 < end) {
+            cp = (c & 0x07) << 18 | (p[1] & 0x3F) << 12 | (p[2] & 0x3F) << 6 | (p[3] & 0x3F);
+            p += 4;
+        } else {
+            p += 1; continue;  // nieprawidłowy bajt
+        }
+        if (cp < 0x10000) {
+            result.push_back(static_cast<char16_t>(cp));
+        } else {
+            // surrogate pair dla U+10000 i wyżej
+            cp -= 0x10000;
+            result.push_back(static_cast<char16_t>(0xD800 | (cp >> 10)));
+            result.push_back(static_cast<char16_t>(0xDC00 | (cp & 0x3FF)));
+        }
+    }
+    return result;
+}
+
 #include "llama.h"
 
 #define TAG "llama_jni"
@@ -204,7 +239,8 @@ Java_com_example_zagadkobot_llama_LlamaCpp_nativeGenerate(
         }
 
         std::string tokenStr(tokenBuf, n);
-        jstring jToken = env->NewStringUTF(tokenStr.c_str());
+        std::u16string utf16 = utf8ToUtf16(tokenStr.c_str(), n);
+        jstring jToken = env->NewString(reinterpret_cast<const jchar*>(utf16.data()), utf16.size());
 
         // Wywołaj callback: onToken(token) -> Boolean
         jobject resultObj = env->CallObjectMethod(onTokenCallback, invokeMethod, jToken);
