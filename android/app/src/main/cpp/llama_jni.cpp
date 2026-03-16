@@ -100,7 +100,7 @@ Java_com_example_zagadkobot_llama_LlamaCpp_nativeLoadModel(
 
     // Parametry kontekstu
     llama_context_params ctx_params = llama_context_default_params();
-    ctx_params.n_ctx = 512;
+    ctx_params.n_ctx = 8192;
     ctx_params.n_threads = nThreads;
     ctx_params.n_threads_batch = nThreads;
 
@@ -166,15 +166,49 @@ Java_com_example_zagadkobot_llama_LlamaCpp_nativeGenerate(
     // Aktualizacja parametrów samplera
     llama_sampler_free(wrapper->sampler);
     wrapper->sampler = llama_sampler_chain_init(llama_sampler_chain_default_params());
+
+    // Repetition penalty — zapobiega zapętlaniu się modelu
+    // Musi być pierwszym w łańcuchu, żeby działał na pełnych logitach.
+    llama_sampler_chain_add(wrapper->sampler,
+        llama_sampler_init_penalties(/*last_n=*/64, /*repeat=*/1.2f, /*freq=*/0.0f, /*present=*/0.0f));
+
+    // Grammar-constrained decoding: zabrania tylko dwukropka,
+    // co eliminuje meta-prefiksy w stylu "Jasne, tu odpowiedź: ...".
+    // Nowe linie są dozwolone — model kończy odpowiedź przez \n + EOG (tak był trenowany).
+    const char* grammar_str = "root ::= [^:]+";
+    llama_sampler_chain_add(wrapper->sampler,
+        llama_sampler_init_grammar(llama_model_get_vocab(wrapper->model), grammar_str, "root"));
+
     llama_sampler_chain_add(wrapper->sampler, llama_sampler_init_top_p(topP, 1));
     llama_sampler_chain_add(wrapper->sampler, llama_sampler_init_temp(temperature));
     llama_sampler_chain_add(wrapper->sampler, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
 
-    // Budujemy pełny prompt w formacie ChatML (Qwen2.5)
-    std::string fullPrompt =
-        "<|im_start|>system\n" + std::string(systemPrompt) + "<|im_end|>\n"
-        "<|im_start|>user\n" + std::string(prompt) + "<|im_end|>\n"
-        "<|im_start|>assistant\n";
+    // Budujemy pełny prompt używając szablonu chatu z metadanych modelu.
+    // llama_model_chat_template() odczytuje szablon Jinja zapisany w pliku GGUF,
+    // co zapewnia poprawny format dla każdego modelu (Bielik, Qwen, Llama itp.).
+    llama_chat_message messages[2];
+    messages[0] = {"system", systemPrompt};
+    messages[1] = {"user",   prompt};
+
+    const char* tmpl = llama_model_chat_template(wrapper->model, nullptr);
+
+    // Pierwsze wywołanie z buf=nullptr zwraca wymaganą długość bufora.
+    int32_t needed = llama_chat_apply_template(tmpl, messages, 2, /*add_ass=*/true, nullptr, 0);
+
+    std::string fullPrompt;
+    if (needed > 0) {
+        std::vector<char> buf(needed + 1, '\0');
+        llama_chat_apply_template(tmpl, messages, 2, true, buf.data(), needed + 1);
+        fullPrompt = std::string(buf.data(), needed);
+        LOGI("Chat template zastosowany (%d znaków)", needed);
+    } else {
+        // Fallback do ChatML gdy model nie ma szablonu lub jest nieobsługiwany.
+        LOGE("Nie udało się zastosować szablonu chatu (kod=%d), fallback do ChatML", needed);
+        fullPrompt =
+            "<|im_start|>system\n" + std::string(systemPrompt) + "<|im_end|>\n"
+            "<|im_start|>user\n" + std::string(prompt) + "<|im_end|>\n"
+            "<|im_start|>assistant\n";
+    }
 
     env->ReleaseStringUTFChars(jPrompt, prompt);
     env->ReleaseStringUTFChars(jSystemPrompt, systemPrompt);
@@ -238,8 +272,17 @@ Java_com_example_zagadkobot_llama_LlamaCpp_nativeGenerate(
             continue;
         }
 
+        // Bielik kończy odpowiedź przez \n + EOG — stop przy pierwszym \n
+        // (bez tego model może wygenerować losowe słowo po \n, przed EOG).
         std::string tokenStr(tokenBuf, n);
-        std::u16string utf16 = utf8ToUtf16(tokenStr.c_str(), n);
+        bool endsWithNewline = (tokenStr.find('\n') != std::string::npos);
+        if (endsWithNewline) {
+            // Wyślij tylko część przed \n (jeśli jest)
+            auto nl = tokenStr.find('\n');
+            tokenStr = tokenStr.substr(0, nl);
+        }
+
+        std::u16string utf16 = utf8ToUtf16(tokenStr.c_str(), tokenStr.size());
         jstring jToken = env->NewString(reinterpret_cast<const jchar*>(utf16.data()), utf16.size());
 
         // Wywołaj callback: onToken(token) -> Boolean
@@ -264,6 +307,11 @@ Java_com_example_zagadkobot_llama_LlamaCpp_nativeGenerate(
                 LOGI("Generowanie przerwane przez callback po %d tokenach", i);
                 return JNI_TRUE;
             }
+        }
+
+        if (endsWithNewline) {
+            LOGI("Newline po %d tokenach — koniec odpowiedzi", i);
+            break;
         }
 
         // Dekoduj nowy token

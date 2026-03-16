@@ -73,7 +73,7 @@ class _GeneratingScreenState extends State<GeneratingScreen> {
           totalTime: sw.elapsed,
           tokenCount: tokenCount,
         );
-        final comment = buffer.toString();
+        final comment = _trimToLastSentence(buffer.toString());
         widget.tts.speak(
           'Poprawna odpowiedź: ${riddle.answers[riddle.correctIndex]}. $comment',
         );
@@ -89,6 +89,19 @@ class _GeneratingScreenState extends State<GeneratingScreen> {
         if (mounted) _navigateToAnswer(fallback, null);
       },
     );
+  }
+
+  String _trimToLastSentence(String text) {
+    int last = -1;
+    for (int i = text.length - 1; i >= 0; i--) {
+      final c = text[i];
+      if (c == '!' || c == '.' || c == '?') {
+        last = i;
+        break;
+      }
+    }
+    if (last < 0) return text.trim();
+    return text.substring(0, last + 1);
   }
 
   void _navigateToAnswer(String comment, LlmStats? stats) {
